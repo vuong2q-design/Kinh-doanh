@@ -78,3 +78,36 @@ Giữ nguyên kế hoạch đã chốt: **thuê OMS để bán ngay từ tuần 
 3. **Mọi dữ liệu từ OMS thuê phải đổ về kho dữ liệu của mình mỗi ngày** — khi chuyển sang hệ tự xây thì lịch sử không mất
 
 Rủi ro cần quản khi tự xây: API sàn đổi phiên bản (cần người bảo trì — đã có trong vai trò phòng Công nghệ), lỗi xử lý đơn thật (giải bằng shadow run), bảo mật dữ liệu khách (phân quyền + backup từ ngày 1).
+
+---
+
+## PHỤ LỤC: NẾU CHẠY 30 AGENT SONG SONG THÌ HẾT MẤY GIỜ?
+
+**Trả lời ngắn: phần máy gõ code thật chỉ còn ~24–72 giờ máy chạy, nhưng dự án không xong trong 3 ngày** — vì code chỉ là một phần của tổng thời gian, và các phần còn lại không song song hóa được (định luật Amdahl).
+
+### Phân rã theo từng khâu (bản OMS/CRM nội bộ đầy đủ)
+
+| Khâu | Song song được? | Thời gian với 30 agent |
+|---|---|---|
+| 1. Thiết kế "hợp đồng chung" — schema DB, chuẩn API giữa các module, quy ước code | ❌ Tuần tự, phải làm TRƯỚC (1 agent + người quyết) | 0,5–1 ngày |
+| 2. Xây ~25–30 module (mỗi agent một module: kết nối Shopee, TikTok Shop, GHN, màn hình đơn, tồn kho, CRM, đối soát...) | ✅ Song song hoàn toàn | **~2–6 giờ máy chạy mỗi agent → gói trong 1 ngày** |
+| 3. Tích hợp + test đầu-cuối + sửa lỗi giao giữa các module | ⚠️ Một phần (2–4 vòng lặp) | 1–3 ngày |
+| 4. **Người review + test với sandbox API thật** | ❌ Nút cổ chai mới: 1 người đọc output của 30 agent | 3–5 ngày |
+| 5. Chờ sàn duyệt tư cách developer | ❌ Ngoài tầm kiểm soát | 2–6 tuần (song song từ tuần 1) |
+| 6. Shadow run — chạy song song với SaaS, đối chiếu từng đơn thật | ❌ Phải chạy theo thời gian thực | 2–4 tuần |
+
+### Kết quả tổng
+
+- **Khâu "viết code" (2+3):** từ ~10 tuần của 1 người → còn **~1–2 tuần lịch**, trong đó thời gian máy thực code chỉ **~24–72 giờ**.
+- **Toàn dự án:** từ 3–4 tháng → còn **~5–7 tuần**, và phần lớn là chờ sàn duyệt + shadow run — hai thứ không agent nào rút ngắn được.
+- **Nút cổ chai dịch chuyển:** không còn là tốc độ code mà là (a) chất lượng bản thiết kế hợp đồng chung ở khâu 1 — thiết kế tồi thì 30 agent tạo ra 30 mảnh không khớp nhau, và (b) sức người review ở khâu 4.
+
+### Chi phí khi chạy 30 agent
+
+- 30 agent song song vượt hạn mức gói thuê bao → tính theo **API** (Claude Opus 5.5: $4/1M token vào, $20/1M token ra). Ước lượng thô cho toàn bộ build nhiều vòng: **~$1.000–4.000 ≈ 25–100 triệu đ** (phụ thuộc số vòng sửa; prompt caching giảm đáng kể).
+- Nghịch lý đáng lưu ý: chi phí này xấp xỉ việc trả 1 agent + 1 người làm thêm vài tuần — **chạy 30 agent mua được THỜI GIAN, không mua được TIỀN rẻ hơn**. Đáng dùng khi tốc độ ra thị trường quý hơn chi phí.
+
+### Khi nào nên dùng kiểu 30 agent
+- Khi hợp đồng chung đã chốt kỹ và các module độc lập rõ ràng (đúng kiểu bài OMS: mỗi kết nối sàn/vận chuyển là một module tách biệt)
+- Khi có người đủ sức review dồn dập trong 1 tuần
+- KHÔNG đáng dùng cho phần lõi dữ liệu (khâu 1) — phần đó cần ít agent, nghĩ sâu, làm chuẩn ngay từ đầu
