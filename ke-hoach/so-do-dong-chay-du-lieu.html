@@ -1,0 +1,343 @@
+<title>Dòng Chảy Dữ Liệu Kinh Doanh</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: bản đồ vận hành một cột, sơ đồ SVG 6 tầng + 3 dòng chảy dạng timeline + bảng công cụ */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --fg:#1d2723; --muted:#5f6e67;
+  --line:#d7deda; --band:#eef2f0;
+  --accent:#0e7467; --accent-soft:#e3f1ee;
+  --gate:#9a5b10; --gate-soft:#f8ecd9;
+  --font-b:"Be Vietnam Pro",system-ui,"Segoe UI",sans-serif;
+  --font-m:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101614; --surface:#1a211e; --fg:#e4eae7; --muted:#95a39c; --line:#2d3733;
+    --band:#161d1a; --accent:#3ec9b6; --accent-soft:#12302b; --gate:#e3a453; --gate-soft:#33270f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#1a211e; --fg:#e4eae7; --muted:#95a39c; --line:#2d3733;
+  --band:#161d1a; --accent:#3ec9b6; --accent-soft:#12302b; --gate:#e3a453; --gate-soft:#33270f;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-b);line-height:1.55;font-size:14px}
+.wrap{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:36px 72px;display:flex;flex-direction:column;gap:44px}
+header .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-size:clamp(26px,5vw,38px);font-weight:800;line-height:1.15;margin:.3em 0 .35em;text-wrap:balance}
+header p{max-width:62ch;color:var(--muted);margin:0 0 14px}
+h2{font-size:19px;font-weight:700;margin:0 0 4px;text-wrap:balance}
+.sec>p.lead{color:var(--muted);margin:0 0 18px;max-width:70ch}
+.legend{display:flex;flex-wrap:wrap;gap:10px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 11px;white-space:nowrap}
+.tag .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.tag.auto{background:var(--accent-soft);color:var(--accent)}
+.tag.auto .dot{background:var(--accent)}
+.tag.gate{background:var(--gate-soft);color:var(--gate)}
+.tag.gate .dot{background:var(--gate)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.scroll.diagram{padding:16px 12px}
+svg.map{display:block;min-width:900px;width:100%;height:auto}
+svg.map .band{fill:var(--band);stroke:none}
+svg.map .bus{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+svg.map .node{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+svg.map .node.auto{stroke:var(--accent);stroke-width:1.6}
+svg.map .node.gate{stroke:var(--gate);stroke-width:1.6}
+svg.map .bt{font:600 13px var(--font-b);fill:var(--fg)}
+svg.map .bs{font:400 10.5px var(--font-b);fill:var(--muted)}
+svg.map .btc{font:700 13.5px var(--font-b);fill:var(--accent);text-anchor:middle}
+svg.map .bsc{font:400 10.5px var(--font-b);fill:var(--muted);text-anchor:middle}
+svg.map .ll{font:600 10px var(--font-b);fill:var(--muted);letter-spacing:.12em}
+svg.map .al{font:400 10px var(--font-b);fill:var(--muted)}
+svg.map .edge{stroke:var(--muted);stroke-width:1.3;fill:none}
+/* 3 dòng chảy dạng timeline */
+.flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:26px}
+.flowcol{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 10px;min-width:0}
+.flowcol h3{font-size:14.5px;font-weight:700;margin:0 0 4px}
+.flowcol .fsub{font-size:12px;color:var(--muted);margin:0 0 14px}
+.steps{list-style:none;margin:0;padding:0}
+.step{position:relative;padding:0 0 16px 26px;min-width:0}
+.step::before{content:"";position:absolute;left:5px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.step.gate::before{background:var(--gate)}
+.step::after{content:"";position:absolute;left:9px;top:19px;bottom:2px;width:2px;background:var(--line)}
+.step:last-child{padding-bottom:4px}
+.step:last-child::after{display:none}
+.step b{display:block;font-size:13px;line-height:1.35}
+.step .tool{display:block;font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:2px;overflow-wrap:break-word}
+/* bảng */
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+thead th{text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 14px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+td .dept{font-weight:700;font-size:13px;white-space:nowrap}
+td .io{color:var(--muted)}
+.mono{font-family:var(--font-m);font-size:11.5px}
+td .g{color:var(--gate);font-weight:600}
+td .a{color:var(--accent);font-weight:600}
+.note{font-size:12px;color:var(--muted);max-width:75ch;margin-top:10px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: no-preference){ html{scroll-behavior:smooth} }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Kinh-doanh · Thực phẩm – Mỹ phẩm – TPCN</div>
+  <h1>Sơ đồ dòng chảy dữ liệu phòng ban</h1>
+  <p>Toàn bộ dữ liệu của công ty chảy qua một trục tự động hóa duy nhất và đổ về một kho dữ liệu trung tâm. Mỗi điểm trên sơ đồ ghi rõ công cụ đảm nhận và chỗ nào cần người duyệt.</p>
+  <div class="legend">
+    <span class="tag auto"><span class="dot"></span>⚙ Tự động hoàn toàn (Bậc 4)</span>
+    <span class="tag gate"><span class="dot"></span>👤 Điểm người duyệt (Bậc 3)</span>
+  </div>
+</header>
+
+<section class="sec">
+  <h2>Bản đồ tổng — 6 tầng dữ liệu</h2>
+  <p class="lead">Đọc từ trên xuống: khách hàng chạm vào tầng Kênh, mọi sự kiện chảy qua Trục tự động hóa, số liệu lắng về tầng Dữ liệu, và giám đốc điều hành ở tầng cuối bằng báo cáo sáng + hàng đợi duyệt.</p>
+  <div class="scroll diagram">
+  <figure style="margin:0">
+  <svg class="map" viewBox="0 0 960 706" role="img" aria-label="Sơ đồ 6 tầng: kênh bán, lõi vận hành, trục tự động hóa n8n và Claude API, thực thi và đối tác, kho dữ liệu, điều hành của giám đốc">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+      </marker>
+    </defs>
+
+    <!-- TẦNG 1: KÊNH -->
+    <rect class="band" x="8" y="8" width="944" height="96" rx="10"/>
+    <text class="ll" x="24" y="28">TẦNG 1 · KÊNH BÁN &amp; CHẠM KHÁCH</text>
+    <rect class="node" x="24"  y="38" width="216" height="58" rx="8"/>
+    <text class="bt" x="36" y="60">Sàn TMĐT</text>
+    <text class="bs" x="36" y="78">Shopee · TikTok Shop · Lazada</text>
+    <rect class="node" x="256" y="38" width="216" height="58" rx="8"/>
+    <text class="bt" x="268" y="60">Website</text>
+    <text class="bs" x="268" y="78">Haravan · Sapo · Shopify</text>
+    <rect class="node" x="488" y="38" width="216" height="58" rx="8"/>
+    <text class="bt" x="500" y="60">Chat &amp; mạng xã hội</text>
+    <text class="bs" x="500" y="78">Zalo OA · Messenger · TikTok</text>
+    <rect class="node" x="720" y="38" width="216" height="58" rx="8"/>
+    <text class="bt" x="732" y="60">Quảng cáo</text>
+    <text class="bs" x="732" y="78">Meta Ads · TikTok Ads</text>
+
+    <line class="edge" x1="132" y1="104" x2="132" y2="134" marker-end="url(#ar)"/>
+    <text class="al" x="140" y="123">đơn hàng</text>
+    <line class="edge" x1="364" y1="104" x2="364" y2="134" marker-end="url(#ar)"/>
+    <text class="al" x="372" y="123">đơn · traffic</text>
+    <line class="edge" x1="596" y1="104" x2="596" y2="134" marker-end="url(#ar)"/>
+    <text class="al" x="604" y="123">hội thoại</text>
+    <line class="edge" x1="828" y1="104" x2="828" y2="134" marker-end="url(#ar)"/>
+    <text class="al" x="836" y="123">số liệu ads</text>
+
+    <!-- TẦNG 2: LÕI VẬN HÀNH -->
+    <rect class="band" x="8" y="136" width="944" height="104" rx="10"/>
+    <text class="ll" x="24" y="156">TẦNG 2 · LÕI VẬN HÀNH</text>
+    <rect class="node" x="24" y="166" width="440" height="62" rx="8"/>
+    <text class="bt" x="36" y="188">OMS + CRM đa kênh</text>
+    <text class="bs" x="36" y="206">Nhanh.vn / Sapo Omni — đơn, tồn kho, khách mọi kênh về một nơi</text>
+    <rect class="node auto" x="480" y="166" width="224" height="62" rx="8"/>
+    <text class="bt" x="492" y="188">⚙ Chatbot bán hàng</text>
+    <text class="bs" x="492" y="206">Claude API — trực 24/7</text>
+    <rect class="node" x="720" y="166" width="216" height="62" rx="8"/>
+    <text class="bt" x="732" y="188">Kế toán &amp; hóa đơn</text>
+    <text class="bs" x="732" y="206">MISA AMIS · meInvoice</text>
+
+    <line class="edge" x1="244" y1="240" x2="244" y2="270" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line class="edge" x1="592" y1="240" x2="592" y2="270" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line class="edge" x1="828" y1="240" x2="828" y2="270" marker-start="url(#ar)" marker-end="url(#ar)"/>
+
+    <!-- TẦNG 3: TRỤC TỰ ĐỘNG HÓA -->
+    <rect class="bus" x="8" y="272" width="944" height="58" rx="10"/>
+    <text class="btc" x="480" y="296">⚙ TRỤC TỰ ĐỘNG HÓA — n8n / Make + Claude API</text>
+    <text class="bsc" x="480" y="314">mọi sự kiện chảy qua đây: đơn mới · tiền về · tồn kho chạm ngưỡng · nội dung chờ duyệt · lỗi hệ thống</text>
+
+    <line class="edge" x1="132" y1="332" x2="132" y2="360" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line class="edge" x1="364" y1="332" x2="364" y2="360" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line class="edge" x1="596" y1="332" x2="596" y2="360" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line class="edge" x1="828" y1="332" x2="828" y2="360" marker-start="url(#ar)" marker-end="url(#ar)"/>
+
+    <!-- TẦNG 4: THỰC THI & ĐỐI TÁC -->
+    <rect class="band" x="8" y="362" width="944" height="96" rx="10"/>
+    <text class="ll" x="24" y="382">TẦNG 4 · THỰC THI &amp; ĐỐI TÁC</text>
+    <rect class="node" x="24" y="392" width="216" height="56" rx="8"/>
+    <text class="bt" x="36" y="413">3PL / Fulfillment</text>
+    <text class="bs" x="36" y="431">Boxme · GHN · Viettel Post</text>
+    <rect class="node" x="256" y="392" width="216" height="56" rx="8"/>
+    <text class="bt" x="268" y="413">Ngân hàng</text>
+    <text class="bs" x="268" y="431">Casso / SePay — webhook tiền về</text>
+    <rect class="node" x="488" y="392" width="216" height="56" rx="8"/>
+    <text class="bt" x="500" y="413">Nhà máy OEM</text>
+    <text class="bs" x="500" y="431">nhận PO, lịch sản xuất</text>
+    <rect class="node" x="720" y="392" width="216" height="56" rx="8"/>
+    <text class="bt" x="732" y="413">Kho tri thức</text>
+    <text class="bs" x="732" y="431">Notion · Drive — SP, SOP, quy tắc</text>
+
+    <line class="edge" x1="132" y1="458" x2="132" y2="488" marker-end="url(#ar)"/>
+    <line class="edge" x1="364" y1="458" x2="364" y2="488" marker-end="url(#ar)"/>
+    <text class="al" x="372" y="477">số liệu · chứng từ</text>
+
+    <!-- TẦNG 5: DỮ LIỆU -->
+    <rect class="band" x="8" y="490" width="944" height="100" rx="10"/>
+    <text class="ll" x="24" y="510">TẦNG 5 · DỮ LIỆU</text>
+    <rect class="node" x="24" y="520" width="440" height="58" rx="8"/>
+    <text class="bt" x="36" y="542">Kho dữ liệu trung tâm</text>
+    <text class="bs" x="36" y="560">Google Sheets → BigQuery khi quy mô lớn</text>
+    <rect class="node" x="480" y="520" width="224" height="58" rx="8"/>
+    <text class="bt" x="492" y="542">Dashboard</text>
+    <text class="bs" x="492" y="560">Looker Studio · Metabase</text>
+    <rect class="node auto" x="720" y="520" width="216" height="58" rx="8"/>
+    <text class="bt" x="732" y="542">⚙ Báo cáo sáng 7h</text>
+    <text class="bs" x="732" y="560">tự gửi Zalo / Telegram</text>
+    <line class="edge" x1="464" y1="549" x2="478" y2="549" marker-end="url(#ar)"/>
+    <line class="edge" x1="704" y1="549" x2="718" y2="549" marker-end="url(#ar)"/>
+
+    <line class="edge" x1="592" y1="590" x2="592" y2="620" marker-end="url(#ar)"/>
+    <line class="edge" x1="828" y1="590" x2="828" y2="620" marker-end="url(#ar)"/>
+
+    <!-- TẦNG 6: ĐIỀU HÀNH -->
+    <rect class="band" x="8" y="622" width="944" height="76" rx="10"/>
+    <rect class="node gate" x="24" y="634" width="440" height="52" rx="8"/>
+    <text class="bt" x="36" y="654">👤 Hàng đợi duyệt — Lark · Trello · Telegram</text>
+    <text class="bs" x="36" y="671">mọi việc cần người từ trục tự động hóa đổ về một chỗ</text>
+    <rect class="node" x="488" y="634" width="448" height="52" rx="8"/>
+    <text class="bt" x="500" y="654">GIÁM ĐỐC</text>
+    <text class="bs" x="500" y="671">báo cáo sáng 5 phút · duyệt 2 phiên/ngày · họp tuần 30 phút</text>
+    <line class="edge" x1="464" y1="660" x2="486" y2="660" marker-end="url(#ar)"/>
+  </svg>
+  <figcaption class="note">Mũi tên hai đầu = dữ liệu chảy hai chiều qua trục tự động hóa. Viền xanh = khối chạy tự động hoàn toàn; viền cam = điểm bắt buộc có người.</figcaption>
+  </figure>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Ba dòng chảy vận hành chính</h2>
+  <p class="lead">Ba vòng khép kín chạy hằng ngày trên bản đồ trên. Mỗi bước ghi rõ công cụ; chấm xanh là máy tự chạy, chấm cam là người can thiệp.</p>
+  <div class="flows">
+    <div class="flowcol">
+      <h3>1 · Dòng đơn hàng &amp; tiền</h3>
+      <p class="fsub">Từ lúc khách đặt đến lúc tiền khớp sổ — mục tiêu &gt;80% đơn không ai chạm tay.</p>
+      <ol class="steps">
+        <li class="step"><b>Khách đặt hàng</b><span class="tool">Shopee · TikTok Shop · Website · Zalo</span></li>
+        <li class="step"><b>⚙ Gom đơn về một nơi</b><span class="tool">Nhanh.vn / Sapo tự đồng bộ đơn đa kênh</span></li>
+        <li class="step"><b>⚙ Xác nhận + hóa đơn điện tử</b><span class="tool">n8n gửi Zalo ZNS · meInvoice tự phát hành</span></li>
+        <li class="step"><b>⚙ Đẩy sang kho 3PL</b><span class="tool">n8n gọi API Boxme / GHN — vận đơn tự cập nhật, tự báo khách</span></li>
+        <li class="step"><b>⚙ Tiền về &amp; khớp đơn</b><span class="tool">Casso / SePay webhook + đối soát COD 3PL — n8n khớp đơn–tiền mỗi ngày</span></li>
+        <li class="step gate"><b>👤 Chỉ ngoại lệ mới gặp người</b><span class="tool">lệch đối soát · giao thất bại lần 2 · khiếu nại → hàng đợi duyệt</span></li>
+      </ol>
+    </div>
+    <div class="flowcol">
+      <h3>2 · Dòng nội dung &amp; quảng cáo</h3>
+      <p class="fsub">Một điểm người duyệt duy nhất — vì quảng cáo TPCN / mỹ phẩm bị quản lý chặt.</p>
+      <ol class="steps">
+        <li class="step"><b>⚙ AI sinh nội dung</b><span class="tool">Claude API viết bài, kịch bản video · Canva / CapCut dựng</span></li>
+        <li class="step"><b>⚙ Cổng tuân thủ tự động</b><span class="tool">Claude đối chiếu từ cấm &amp; công dụng được phép (bộ quy tắc trong Notion)</span></li>
+        <li class="step gate"><b>👤 Duyệt 1 chạm</b><span class="tool">hàng đợi Lark / Trello — mục tiêu &lt;5% phải sửa</span></li>
+        <li class="step"><b>⚙ Đăng đa kênh theo lịch</b><span class="tool">n8n → API Facebook · TikTok · Shopee</span></li>
+        <li class="step"><b>⚙ Chạy &amp; tối ưu ads</b><span class="tool">Meta / TikTok Ads — quy tắc tắt/scale tự động, hạn mức ngày</span></li>
+        <li class="step"><b>⚙ Số liệu đổ về kho dữ liệu</b><span class="tool">ads API → Sheets / BigQuery → dashboard</span></li>
+      </ol>
+    </div>
+    <div class="flowcol">
+      <h3>3 · Dòng tồn kho &amp; đặt hàng OEM</h3>
+      <p class="fsub">Không bao giờ cháy hàng, không ôm kho — máy đề xuất, người duyệt.</p>
+      <ol class="steps">
+        <li class="step"><b>⚙ Số bán cập nhật mỗi ngày</b><span class="tool">OMS → kho dữ liệu trung tâm</span></li>
+        <li class="step"><b>⚙ AI dự báo từng SKU</b><span class="tool">Claude tính "ngày-bán-còn-lại" theo tốc độ bán thực</span></li>
+        <li class="step"><b>⚙ Tạo PO nháp khi chạm ngưỡng</b><span class="tool">n8n — ngưỡng = 21 ngày bán + 3–4 tuần sản xuất OEM</span></li>
+        <li class="step gate"><b>👤 Giám đốc duyệt PO</b><span class="tool">1 chạm trong hàng đợi duyệt</span></li>
+        <li class="step"><b>⚙ Gửi OEM &amp; theo dõi tiến độ</b><span class="tool">email tự động, tự nhắc lịch sản xuất</span></li>
+        <li class="step gate"><b>👤 Nhận lô tại 3PL</b><span class="tool">người kiểm lô · ⚙ AI lưu hồ sơ lô (số lô, phiếu kiểm nghiệm) vào Notion</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Dòng dữ liệu của từng phòng ban</h2>
+  <p class="lead">Dữ liệu vào, công cụ xử lý tự động, và điểm duy nhất cần người của mỗi phòng.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Phòng ban</th><th>Dữ liệu vào → ra</th><th>Tự động hóa — công cụ</th><th>Điểm người duyệt</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="dept">Marketing &amp; Nội dung</span></td>
+          <td class="io">xu hướng, số liệu ads, brief sản phẩm → nội dung đã duyệt, số liệu chiến dịch</td>
+          <td><span class="a">⚙</span> Claude API sinh content · n8n đăng lịch · Meta/TikTok Ads API · Metric.vn nghiên cứu sàn</td>
+          <td><span class="g">👤</span> duyệt mọi nội dung nói về công dụng</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Kinh doanh &amp; CSKH</span></td>
+          <td class="io">hội thoại đa kênh, lịch sử mua → đơn hàng, luồng tái mua, điểm hài lòng</td>
+          <td><span class="a">⚙</span> Chatbot Claude API trên web/Zalo OA/Messenger · Zalo ZNS chăm sóc &amp; nhắc tái mua · CRM phân khúc khách</td>
+          <td><span class="g">👤</span> khiếu nại, đơn sỉ, câu hỏi bệnh lý</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Vận hành &amp; Cung ứng</span></td>
+          <td class="io">đơn từ OMS, tồn kho, vận đơn → lệnh giao 3PL, PO, số đối soát</td>
+          <td><span class="a">⚙</span> API Boxme/GHN/Viettel Post · n8n xử lý hoàn-hủy theo quy tắc · Claude dự báo nhu cầu</td>
+          <td><span class="g">👤</span> duyệt PO, kiểm chất lượng lô</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Tài chính – Kế toán</span></td>
+          <td class="io">giao dịch bán, phí sàn/ads, tiền ngân hàng → P&amp;L realtime, hóa đơn, hồ sơ thuế</td>
+          <td><span class="a">⚙</span> Casso/SePay khớp tiền-đơn · meInvoice phát hành HĐĐT · MISA AMIS sổ sách · n8n tính P&amp;L theo SKU</td>
+          <td><span class="g">👤</span> dịch vụ kế toán kê khai thuế · GĐ duyệt chi theo hạn mức</td>
+        </tr>
+        <tr>
+          <td><span class="dept">R&amp;D Sản phẩm</span></td>
+          <td class="io">số liệu sàn, review đối thủ, xu hướng thành phần → brief sản phẩm, hồ sơ công bố, hồ sơ lô</td>
+          <td><span class="a">⚙</span> Claude nghiên cứu &amp; chấm điểm ý tưởng · Metric.vn + Google Trends · soạn nháp hồ sơ công bố</td>
+          <td><span class="g">👤</span> người chuyên môn duyệt công thức, ký hồ sơ</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Pháp chế &amp; Tuân thủ</span></td>
+          <td class="io">nội dung chờ đăng, văn bản luật mới → nội dung đạt/bị chặn, cảnh báo hạn giấy phép</td>
+          <td><span class="a">⚙</span> cổng tuân thủ Claude + bộ quy tắc máy đọc được (Notion) · n8n nhắc hạn giấy phép 60/30 ngày</td>
+          <td><span class="g">👤</span> luật sư theo vụ việc — AI không quyết pháp lý</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Nhân sự – Hành chính</span></td>
+          <td class="io">CV, chấm công → hợp đồng, bảng lương, onboarding</td>
+          <td><span class="a">⚙</span> Claude sàng CV &amp; soạn giấy tờ · phần mềm chấm công-tính lương · checklist onboarding tự chạy</td>
+          <td><span class="g">👤</span> giám đốc phỏng vấn &amp; quyết tuyển</td>
+        </tr>
+        <tr>
+          <td><span class="dept">Công nghệ &amp; Dữ liệu</span></td>
+          <td class="io">log mọi hệ thống, sự kiện lỗi → automation mới, cảnh báo, báo cáo sáng</td>
+          <td><span class="a">⚙</span> n8n giám sát &amp; cảnh báo · Claude Code viết automation · Looker Studio dashboard</td>
+          <td><span class="g">👤</span> 1 người kỹ thuật xử lý cảnh báo máy báo</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Danh mục công cụ theo vai trò</h2>
+  <p class="lead">Tên công cụ là gợi ý phổ biến tại Việt Nam — thay thế được, miễn giữ đúng vai trò trong sơ đồ. Tiêu chí bắt buộc khi chọn: <strong>có API và xuất được dữ liệu</strong>.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Vai trò</th><th>Công cụ chính</th><th>Thay thế</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td>Website &amp; bán hàng</td><td class="mono">Haravan · Sapo Web</td><td class="mono">Shopify</td><td>kèm theme, thanh toán, tên miền</td></tr>
+        <tr><td>OMS / CRM đa kênh</td><td class="mono">Nhanh.vn</td><td class="mono">Sapo Omnichannel</td><td>trái tim của tầng 2 — chọn kỹ nhất</td></tr>
+        <tr><td>Trục tự động hóa</td><td class="mono">n8n (tự host)</td><td class="mono">Make · Zapier</td><td>n8n rẻ, không giới hạn luồng</td></tr>
+        <tr><td>AI xử lý &amp; chatbot</td><td class="mono">Claude API</td><td class="mono">—</td><td>chatbot, content, dự báo, phân tích</td></tr>
+        <tr><td>Viết automation</td><td class="mono">Claude Code</td><td class="mono">—</td><td>1 người kỹ thuật + AI viết code tích hợp</td></tr>
+        <tr><td>Thông báo khách</td><td class="mono">Zalo ZNS</td><td class="mono">SMS brandname</td><td>xác nhận đơn, nhắc tái mua</td></tr>
+        <tr><td>Fulfillment / 3PL</td><td class="mono">Boxme</td><td class="mono">GHN · Viettel Post</td><td>loại ngay đơn vị không có API</td></tr>
+        <tr><td>Đối soát ngân hàng</td><td class="mono">Casso</td><td class="mono">SePay</td><td>webhook tiền về, tự khớp đơn</td></tr>
+        <tr><td>Kế toán &amp; thuế</td><td class="mono">MISA AMIS</td><td class="mono">FAST</td><td>+ dịch vụ kế toán thuê ngoài kê khai</td></tr>
+        <tr><td>Hóa đơn điện tử</td><td class="mono">meInvoice</td><td class="mono">Viettel SInvoice</td><td>phát hành tự động theo đơn</td></tr>
+        <tr><td>Kho dữ liệu</td><td class="mono">Google Sheets</td><td class="mono">BigQuery (khi lớn)</td><td>bắt đầu đơn giản, nâng cấp sau</td></tr>
+        <tr><td>Dashboard</td><td class="mono">Looker Studio</td><td class="mono">Metabase</td><td>Looker Studio miễn phí</td></tr>
+        <tr><td>Nghiên cứu thị trường sàn</td><td class="mono">Metric.vn</td><td class="mono">Google Trends</td><td>số liệu bán của đối thủ trên sàn</td></tr>
+        <tr><td>Sản xuất nội dung</td><td class="mono">Canva · CapCut</td><td class="mono">—</td><td>dựng hình &amp; video từ kịch bản AI</td></tr>
+        <tr><td>Kho tri thức &amp; SOP</td><td class="mono">Notion</td><td class="mono">Google Drive</td><td>nguồn sự thật duy nhất cho mọi AI</td></tr>
+        <tr><td>Hàng đợi duyệt</td><td class="mono">Lark</td><td class="mono">Trello · Telegram</td><td>mọi việc cần người về một chỗ</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Nguyên tắc vận hành đi kèm sơ đồ: mọi việc mới mặc định "AI làm — người duyệt 1 chạm"; khi tỷ lệ phải sửa xuống dưới 5% trong 2–4 tuần thì bỏ bước duyệt. Chi tiết trong bộ tài liệu <span class="mono">ke-hoach/</span> của repo Kinh-doanh.</p>
+</section>
+</div>
