@@ -1,0 +1,259 @@
+<title>Workflow n8n Kinh Doanh</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 6 workflow n8n dạng node-graph ngang, cuộn ngang trong khung riêng; cùng hệ màu với sơ đồ dòng chảy */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --fg:#1d2723; --muted:#5f6e67;
+  --line:#d7deda; --band:#eef2f0;
+  --accent:#0e7467; --accent-soft:#e3f1ee;
+  --gate:#9a5b10; --gate-soft:#f8ecd9;
+  --font-b:"Be Vietnam Pro",system-ui,"Segoe UI",sans-serif;
+  --font-m:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101614; --surface:#1a211e; --fg:#e4eae7; --muted:#95a39c; --line:#2d3733;
+    --band:#161d1a; --accent:#3ec9b6; --accent-soft:#12302b; --gate:#e3a453; --gate-soft:#33270f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#1a211e; --fg:#e4eae7; --muted:#95a39c; --line:#2d3733;
+  --band:#161d1a; --accent:#3ec9b6; --accent-soft:#12302b; --gate:#e3a453; --gate-soft:#33270f;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-b);line-height:1.55;font-size:14px}
+.wrap{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:36px 72px;display:flex;flex-direction:column;gap:34px}
+header .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-size:clamp(26px,5vw,38px);font-weight:800;line-height:1.15;margin:.3em 0 .35em;text-wrap:balance}
+header p{max-width:66ch;color:var(--muted);margin:0 0 14px}
+.legend{display:flex;flex-wrap:wrap;gap:10px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 11px;white-space:nowrap}
+.tag .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.tag.auto{background:var(--accent-soft);color:var(--accent)}
+.tag.auto .dot{background:var(--accent)}
+.tag.gate{background:var(--gate-soft);color:var(--gate)}
+.tag.gate .dot{background:var(--gate)}
+.wf{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 10px;min-width:0}
+.wf h3{font-size:15px;font-weight:700;margin:0 0 2px}
+.wf .wsub{font-size:12px;color:var(--muted);margin:0 0 12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg.flow{display:block;height:auto}
+svg.flow .nbox{fill:var(--surface);stroke:var(--line);stroke-width:1.3}
+svg.flow .nbox.trg{stroke:var(--accent);stroke-width:1.7;fill:var(--accent-soft)}
+svg.flow .nbox.gate{stroke:var(--gate);stroke-width:1.7}
+svg.flow .nt{font:600 12px var(--font-b);fill:var(--fg)}
+svg.flow .nd{font:400 10px var(--font-b);fill:var(--muted)}
+svg.flow .nn{font:500 9.5px var(--font-m);fill:var(--accent)}
+svg.flow .lbl{font:600 10px var(--font-b);fill:var(--muted)}
+svg.flow .edge{stroke:var(--muted);stroke-width:1.3;fill:none}
+svg.flow .edge.loop{stroke-dasharray:4 4}
+svg.flow .port{fill:var(--muted)}
+.cap{font-size:11.5px;color:var(--muted);margin:10px 2px 6px}
+h2{font-size:19px;font-weight:700;margin:0 0 6px}
+.deploy{background:var(--band);border-radius:14px;padding:18px 20px}
+.deploy ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:13px}
+.deploy .mono{font-family:var(--font-m);font-size:12px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Kinh-doanh · Trục tự động hóa</div>
+  <h1>Bộ workflow n8n</h1>
+  <p>Sáu workflow vẽ đúng dạng node-graph của n8n — mỗi ô là một node với tên node n8n cụ thể ở dòng cuối. Đây là phương án "nhìn luồng bằng sơ đồ" của trục tự động hóa (thay cho script thuần); chọn một trong hai, không chạy song song.</p>
+  <div class="legend">
+    <span class="tag auto"><span class="dot"></span>⚡ Node khởi phát (trigger)</span>
+    <span class="tag auto"><span class="dot"></span>Chạy tự động</span>
+    <span class="tag gate"><span class="dot"></span>👤 Điểm chờ người duyệt</span>
+  </div>
+</header>
+
+<section class="wf">
+  <h3>WF-1 · Đơn hàng mới → giao hàng</h3>
+  <p class="wsub">Chạy mỗi khi có đơn từ bất kỳ kênh nào. Mục tiêu: 0 giây chạm tay người.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 1292 110" style="min-width:1292px" role="img" aria-label="Workflow n8n xử lý đơn hàng mới: webhook đơn mới, lấy chi tiết, xác nhận khách qua ZNS, phát hành hóa đơn, đẩy 3PL, ghi kho dữ liệu">
+    <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="40">⚡ Đơn mới</text><text class="nd" x="28" y="57">webhook từ OMS bắn sang</text><text class="nn" x="28" y="74">Webhook</text>
+    <rect class="nbox" x="234" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="40">Lấy chi tiết đơn</text><text class="nd" x="246" y="57">gọi API Nhanh.vn / Sapo</text><text class="nn" x="246" y="74">HTTP Request</text>
+    <rect class="nbox" x="452" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="40">Xác nhận khách</text><text class="nd" x="464" y="57">tin nhắn tự động</text><text class="nn" x="464" y="74">HTTP Request · Zalo ZNS</text>
+    <rect class="nbox" x="670" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="40">Phát hành HĐĐT</text><text class="nd" x="682" y="57">hóa đơn điện tử theo đơn</text><text class="nn" x="682" y="74">HTTP Request · meInvoice</text>
+    <rect class="nbox" x="888" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="40">Đẩy đơn 3PL</text><text class="nd" x="900" y="57">tạo vận đơn GHN / Boxme</text><text class="nn" x="900" y="74">HTTP Request · 3PL</text>
+    <rect class="nbox" x="1106" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="1118" y="40">Ghi kho dữ liệu</text><text class="nd" x="1118" y="57">lưu đơn + trạng thái</text><text class="nn" x="1118" y="74">Postgres</text>
+    <circle class="port" cx="186" cy="55" r="3.5"/><line class="edge" x1="186" y1="55" x2="230" y2="55" marker-end="url(#a1)"/>
+    <circle class="port" cx="404" cy="55" r="3.5"/><line class="edge" x1="404" y1="55" x2="448" y2="55" marker-end="url(#a1)"/>
+    <circle class="port" cx="622" cy="55" r="3.5"/><line class="edge" x1="622" y1="55" x2="666" y2="55" marker-end="url(#a1)"/>
+    <circle class="port" cx="840" cy="55" r="3.5"/><line class="edge" x1="840" y1="55" x2="884" y2="55" marker-end="url(#a1)"/>
+    <circle class="port" cx="1058" cy="55" r="3.5"/><line class="edge" x1="1058" y1="55" x2="1102" y2="55" marker-end="url(#a1)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="wf">
+  <h3>WF-2 · Tiền về &amp; đối soát</h3>
+  <p class="wsub">Chạy mỗi khi ngân hàng báo có. Khớp được thì tự ghi sổ; lệch mới gọi người.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 1074 218" style="min-width:1074px" role="img" aria-label="Workflow n8n đối soát tiền về: webhook Casso, tìm đơn khớp, rẽ nhánh — khớp thì đánh dấu đã thu và ghi sổ, lệch thì cảnh báo Telegram">
+    <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="90">⚡ Tiền về</text><text class="nd" x="28" y="107">báo có từ ngân hàng</text><text class="nn" x="28" y="124">Webhook · Casso/SePay</text>
+    <rect class="nbox" x="234" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="90">Tìm đơn khớp</text><text class="nd" x="246" y="107">so số tiền + nội dung CK</text><text class="nn" x="246" y="124">Postgres</text>
+    <rect class="nbox" x="452" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="90">Khớp đơn?</text><text class="nd" x="464" y="107">đúng tiền, đúng mã đơn</text><text class="nn" x="464" y="124">IF</text>
+    <rect class="nbox" x="670" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="30">Đánh dấu đã thu</text><text class="nd" x="682" y="47">cập nhật OMS + hóa đơn</text><text class="nn" x="682" y="64">HTTP Request</text>
+    <rect class="nbox" x="888" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="30">Ghi sổ</text><text class="nd" x="900" y="47">P&amp;L realtime theo SKU</text><text class="nn" x="900" y="64">Postgres</text>
+    <rect class="nbox gate" x="670" y="132" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="154">Cảnh báo lệch 👤</text><text class="nd" x="682" y="171">gửi giám đốc xử lý tay</text><text class="nn" x="682" y="188">Telegram</text>
+    <circle class="port" cx="186" cy="105" r="3.5"/><line class="edge" x1="186" y1="105" x2="230" y2="105" marker-end="url(#a2)"/>
+    <circle class="port" cx="404" cy="105" r="3.5"/><line class="edge" x1="404" y1="105" x2="448" y2="105" marker-end="url(#a2)"/>
+    <circle class="port" cx="622" cy="96" r="3.5"/><polyline class="edge" points="622,96 646,96 646,45 666,45" marker-end="url(#a2)"/>
+    <text class="lbl" x="640" y="60" text-anchor="end">✓ khớp</text>
+    <circle class="port" cx="622" cy="114" r="3.5"/><polyline class="edge" points="622,114 646,114 646,169 666,169" marker-end="url(#a2)"/>
+    <text class="lbl" x="640" y="158" text-anchor="end">✗ lệch</text>
+    <circle class="port" cx="840" cy="45" r="3.5"/><line class="edge" x1="840" y1="45" x2="884" y2="45" marker-end="url(#a2)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="wf">
+  <h3>WF-3 · Tồn kho → đặt hàng OEM</h3>
+  <p class="wsub">Chạy mỗi sáng. AI đề xuất, giám đốc duyệt một chạm ngay trên Telegram.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 1510 218" style="min-width:1510px" role="img" aria-label="Workflow n8n tồn kho: schedule 6 giờ sáng, lấy số bán, Claude dự báo, nếu tồn dưới ngưỡng thì tạo PO nháp gửi duyệt Telegram, chờ đồng ý rồi email cho OEM">
+    <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="90">⚡ 06:00 hằng ngày</text><text class="nd" x="28" y="107">quét tồn kho mỗi sáng</text><text class="nn" x="28" y="124">Schedule Trigger</text>
+    <rect class="nbox" x="234" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="90">Lấy số bán &amp; tồn</text><text class="nd" x="246" y="107">theo từng SKU</text><text class="nn" x="246" y="124">Postgres</text>
+    <rect class="nbox" x="452" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="90">Dự báo AI</text><text class="nd" x="464" y="107">ngày-bán-còn-lại mỗi SKU</text><text class="nn" x="464" y="124">HTTP Request · Claude API</text>
+    <rect class="nbox" x="670" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="90">Tồn &lt; ngưỡng?</text><text class="nd" x="682" y="107">21 ngày bán + 3–4 tuần SX</text><text class="nn" x="682" y="124">IF</text>
+    <rect class="nbox gate" x="888" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="30">PO nháp + gửi duyệt</text><text class="nd" x="900" y="47">đề xuất số lượng đặt 👤</text><text class="nn" x="900" y="64">Code · Telegram</text>
+    <rect class="nbox gate" x="1106" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="1118" y="30">Chờ ✅ của GĐ</text><text class="nd" x="1118" y="47">duyệt 1 chạm trên điện thoại</text><text class="nn" x="1118" y="64">Wait</text>
+    <rect class="nbox" x="1324" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="1336" y="30">Gửi OEM</text><text class="nd" x="1336" y="47">email PO + nhắc tiến độ</text><text class="nn" x="1336" y="64">Send Email</text>
+    <rect class="nbox" x="888" y="132" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="154">Kết thúc</text><text class="nd" x="900" y="171">tồn còn đủ — không làm gì</text><text class="nn" x="900" y="188">No Operation</text>
+    <circle class="port" cx="186" cy="105" r="3.5"/><line class="edge" x1="186" y1="105" x2="230" y2="105" marker-end="url(#a3)"/>
+    <circle class="port" cx="404" cy="105" r="3.5"/><line class="edge" x1="404" y1="105" x2="448" y2="105" marker-end="url(#a3)"/>
+    <circle class="port" cx="622" cy="105" r="3.5"/><line class="edge" x1="622" y1="105" x2="666" y2="105" marker-end="url(#a3)"/>
+    <circle class="port" cx="840" cy="96" r="3.5"/><polyline class="edge" points="840,96 864,96 864,45 884,45" marker-end="url(#a3)"/>
+    <text class="lbl" x="858" y="60" text-anchor="end">✓ cần đặt</text>
+    <circle class="port" cx="840" cy="114" r="3.5"/><polyline class="edge" points="840,114 864,114 864,169 884,169" marker-end="url(#a3)"/>
+    <text class="lbl" x="858" y="158" text-anchor="end">✗ còn đủ</text>
+    <circle class="port" cx="1058" cy="45" r="3.5"/><line class="edge" x1="1058" y1="45" x2="1102" y2="45" marker-end="url(#a3)"/>
+    <circle class="port" cx="1276" cy="45" r="3.5"/><line class="edge" x1="1276" y1="45" x2="1320" y2="45" marker-end="url(#a3)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="wf">
+  <h3>WF-4 · Nội dung → tuân thủ → đăng</h3>
+  <p class="wsub">Luồng quan trọng nhất với ngành TPCN/mỹ phẩm: nội dung bị chặn tự quay lại sửa, chỉ nội dung đạt mới đến tay người duyệt.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 1510 218" style="min-width:1510px" role="img" aria-label="Workflow n8n nội dung: schedule 8 giờ, Claude sinh nội dung, cổng tuân thủ kiểm tra, đạt thì gửi người duyệt qua Telegram rồi đăng đa kênh, không đạt thì AI tự sửa và kiểm lại">
+    <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="90">⚡ 08:00 hằng ngày</text><text class="nd" x="28" y="107">theo lịch nội dung tuần</text><text class="nn" x="28" y="124">Schedule Trigger</text>
+    <rect class="nbox" x="234" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="90">AI sinh nội dung</text><text class="nd" x="246" y="107">bài đăng + kịch bản video</text><text class="nn" x="246" y="124">HTTP Request · Claude API</text>
+    <rect class="nbox" x="452" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="90">Cổng tuân thủ</text><text class="nd" x="464" y="107">đối chiếu từ cấm, công dụng</text><text class="nn" x="464" y="124">HTTP Request · Claude API</text>
+    <rect class="nbox" x="670" y="68" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="90">Đạt tuân thủ?</text><text class="nd" x="682" y="107">0 vi phạm mới đi tiếp</text><text class="nn" x="682" y="124">IF</text>
+    <rect class="nbox gate" x="888" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="30">Gửi duyệt 👤</text><text class="nd" x="900" y="47">xem trước + nút ✅/❌</text><text class="nn" x="900" y="64">Telegram</text>
+    <rect class="nbox gate" x="1106" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="1118" y="30">Chờ ✅</text><text class="nd" x="1118" y="47">người duyệt 1 chạm</text><text class="nn" x="1118" y="64">Wait</text>
+    <rect class="nbox" x="1324" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="1336" y="30">Đăng đa kênh</text><text class="nd" x="1336" y="47">Facebook · TikTok · Shopee</text><text class="nn" x="1336" y="64">HTTP Request</text>
+    <rect class="nbox" x="888" y="132" width="170" height="74" rx="10"/>
+    <text class="nt" x="900" y="154">AI tự sửa</text><text class="nd" x="900" y="171">sửa theo lỗi bị chặn</text><text class="nn" x="900" y="188">HTTP Request · Claude API</text>
+    <circle class="port" cx="186" cy="105" r="3.5"/><line class="edge" x1="186" y1="105" x2="230" y2="105" marker-end="url(#a4)"/>
+    <circle class="port" cx="404" cy="105" r="3.5"/><line class="edge" x1="404" y1="105" x2="448" y2="105" marker-end="url(#a4)"/>
+    <circle class="port" cx="622" cy="105" r="3.5"/><line class="edge" x1="622" y1="105" x2="666" y2="105" marker-end="url(#a4)"/>
+    <circle class="port" cx="840" cy="96" r="3.5"/><polyline class="edge" points="840,96 864,96 864,45 884,45" marker-end="url(#a4)"/>
+    <text class="lbl" x="858" y="60" text-anchor="end">✓ đạt</text>
+    <circle class="port" cx="840" cy="114" r="3.5"/><polyline class="edge" points="840,114 864,114 864,169 884,169" marker-end="url(#a4)"/>
+    <text class="lbl" x="858" y="158" text-anchor="end">✗ vi phạm</text>
+    <polyline class="edge loop" points="888,169 537,169 537,148" marker-end="url(#a4)"/>
+    <text class="lbl" x="640" y="162">sửa xong, kiểm lại</text>
+    <circle class="port" cx="1058" cy="45" r="3.5"/><line class="edge" x1="1058" y1="45" x2="1102" y2="45" marker-end="url(#a4)"/>
+    <circle class="port" cx="1276" cy="45" r="3.5"/><line class="edge" x1="1276" y1="45" x2="1320" y2="45" marker-end="url(#a4)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="wf">
+  <h3>WF-5 · Báo cáo sáng 07:00</h3>
+  <p class="wsub">Giám đốc đọc 5 phút mỗi sáng thay vì mở 5 phần mềm.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 856 110" style="min-width:856px" role="img" aria-label="Workflow n8n báo cáo sáng: schedule 7 giờ, gom số liệu hôm qua, Claude viết nhận định, gửi giám đốc qua Telegram hoặc Zalo">
+    <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="40">⚡ 07:00 hằng ngày</text><text class="nd" x="28" y="57">trước giờ làm việc</text><text class="nn" x="28" y="74">Schedule Trigger</text>
+    <rect class="nbox" x="234" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="40">Gom số liệu hôm qua</text><text class="nd" x="246" y="57">đơn, doanh thu, ads, tồn</text><text class="nn" x="246" y="74">Postgres · Ads API</text>
+    <rect class="nbox" x="452" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="40">AI viết nhận định</text><text class="nd" x="464" y="57">3 điểm bất thường cần chú ý</text><text class="nn" x="464" y="74">HTTP Request · Claude API</text>
+    <rect class="nbox" x="670" y="18" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="40">Gửi giám đốc</text><text class="nd" x="682" y="57">báo cáo sáng 5 phút</text><text class="nn" x="682" y="74">Telegram / Zalo</text>
+    <circle class="port" cx="186" cy="55" r="3.5"/><line class="edge" x1="186" y1="55" x2="230" y2="55" marker-end="url(#a5)"/>
+    <circle class="port" cx="404" cy="55" r="3.5"/><line class="edge" x1="404" y1="55" x2="448" y2="55" marker-end="url(#a5)"/>
+    <circle class="port" cx="622" cy="55" r="3.5"/><line class="edge" x1="622" y1="55" x2="666" y2="55" marker-end="url(#a5)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="wf">
+  <h3>WF-6 · Vận đơn trục trặc (thất bại / hoàn)</h3>
+  <p class="wsub">Xử lý theo quy tắc, chỉ chuyển người khi khách không phản hồi.</p>
+  <div class="scroll">
+  <svg class="flow" viewBox="0 0 856 270" style="min-width:856px" role="img" aria-label="Workflow n8n vận đơn trục trặc: webhook trạng thái từ 3PL, node Switch chia ba nhánh — thất bại lần 1 tự hẹn giao lại, thất bại lần 2 nhắn ZNS hỏi khách rồi chuyển người nếu không phản hồi, đơn hoàn thì tạo phiếu nhập kho">
+    <defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+    <rect class="nbox trg" x="16" y="96" width="170" height="74" rx="10"/>
+    <text class="nt" x="28" y="118">⚡ Trạng thái vận đơn</text><text class="nd" x="28" y="135">webhook từ GHN / Boxme</text><text class="nn" x="28" y="152">Webhook</text>
+    <rect class="nbox" x="234" y="96" width="170" height="74" rx="10"/>
+    <text class="nt" x="246" y="118">Phân loại</text><text class="nd" x="246" y="135">thất bại L1 / L2 / hoàn</text><text class="nn" x="246" y="152">Switch</text>
+    <rect class="nbox" x="452" y="8" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="30">Hẹn giao lại</text><text class="nd" x="464" y="47">thất bại lần 1 — tự đặt lịch</text><text class="nn" x="464" y="64">HTTP Request · 3PL</text>
+    <rect class="nbox" x="452" y="96" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="118">Hỏi lại khách</text><text class="nd" x="464" y="135">thất bại lần 2 — ZNS xác nhận</text><text class="nn" x="464" y="152">HTTP Request · ZNS</text>
+    <rect class="nbox gate" x="670" y="96" width="170" height="74" rx="10"/>
+    <text class="nt" x="682" y="118">Chuyển người 👤</text><text class="nd" x="682" y="135">khách không phản hồi</text><text class="nn" x="682" y="152">Telegram</text>
+    <rect class="nbox" x="452" y="184" width="170" height="74" rx="10"/>
+    <text class="nt" x="464" y="206">Phiếu nhập kho</text><text class="nd" x="464" y="223">đơn hoàn — ghi sổ + nhập lại</text><text class="nn" x="464" y="240">HTTP Request · Postgres</text>
+    <circle class="port" cx="186" cy="133" r="3.5"/><line class="edge" x1="186" y1="133" x2="230" y2="133" marker-end="url(#a6)"/>
+    <circle class="port" cx="404" cy="115" r="3.5"/><polyline class="edge" points="404,115 428,115 428,45 448,45" marker-end="url(#a6)"/>
+    <circle class="port" cx="404" cy="133" r="3.5"/><line class="edge" x1="404" y1="133" x2="448" y2="133" marker-end="url(#a6)"/>
+    <circle class="port" cx="404" cy="151" r="3.5"/><polyline class="edge" points="404,151 428,151 428,221 448,221" marker-end="url(#a6)"/>
+    <circle class="port" cx="622" cy="133" r="3.5"/><line class="edge" x1="622" y1="133" x2="666" y2="133" marker-end="url(#a6)"/>
+  </svg>
+  </div>
+</section>
+
+<section class="deploy">
+  <h2>Cách triển khai</h2>
+  <ul>
+    <li><strong>Cài n8n tự host (miễn phí):</strong> Docker trên VPS nhỏ (~150–300 nghìn đ/tháng) — <span class="mono">docker run -d -p 5678:5678 n8nio/n8n</span>; thêm HTTPS qua reverse proxy trước khi nhận webhook thật.</li>
+    <li><strong>Thứ tự dựng</strong> theo lộ trình 12 tuần: WF-5 báo cáo sáng trước (dễ nhất, thấy giá trị ngay) → WF-1, WF-2 trước khi launch → WF-6 khi có đơn thật → WF-3, WF-4 khi vận hành ổn định.</li>
+    <li><strong>Mỗi workflow export ra file JSON và lưu vào repo</strong> (thư mục <span class="mono">n8n/</span>) — có lịch sử sửa đổi, hỏng thì import lại trong 1 phút.</li>
+    <li><strong>Claude Code viết được JSON workflow để import thẳng vào n8n</strong> — mô tả luồng bằng tiếng Việt, nhận file import; 6 sơ đồ trên chính là đặc tả để sinh file.</li>
+    <li><strong>Mọi node lỗi</strong> trỏ về một Error Workflow chung: ghi log + nhắn Telegram — khớp nguyên tắc "hệ thống tự giám sát" của phòng Công nghệ.</li>
+    <li><strong>Node chờ duyệt</strong> (Telegram + Wait) chính là "hàng đợi duyệt trung tâm" trong sơ đồ dòng chảy — mọi workflow dùng chung một bot, một nhóm chat.</li>
+  </ul>
+</section>
+</div>
